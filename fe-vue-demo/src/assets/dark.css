@@ -1,0 +1,174 @@
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --bg-page: #17161c;
+  --bg-surface: #211f28;
+  --bg-soft: #1b1a21;
+  --bg-hover: #2a2733;
+  --accent-soft: #34222a;
+  --highlight-soft: #2e2530;
+  --danger-soft: #3a2126;
+  --carousel-bg: #12111a;
+  --text-main: #ece9f1;
+  --text-soft: #b6b0c2;
+  --text-prose: #b6b0c2;
+  --text-mute: #837d90;
+  --accent-text: #ff8095;
+  --highlight: #c99aa2;
+  --danger: #ff8f99;
+  --border: #453f52;
+  --border-strong: #5a3742;
+  --accent-border: #7a4553;
+  --accent-border-2: #ff5872;
+  --accent: #ff5872;
+  --accent-strong: #d93a53;
+  --el-bg-color: #211f28;
+  --el-bg-color-overlay: #211f28;
+  --el-fill-color-blank: #211f28;
+  --el-fill-color-light: #2a2733;
+  --el-text-color-primary: #ece9f1;
+  --el-text-color-regular: #b6b0c2;
+  --el-text-color-placeholder: #837d90;
+  --el-border-color: #453f52;
+  --el-border-color-light: #302d3a;
+  --el-color-primary: #ff3858;
+  --el-color-primary-light-3: #ff7188;
+  --el-color-primary-light-5: #ff9bab;
+  --el-color-primary-light-7: #7a4553;
+  --el-color-primary-light-8: #5a3742;
+  --el-color-primary-light-9: #34222a;
+  --el-color-primary-dark-2: #cc2d46;
+}
+
+html[data-theme="dark"] body {
+  color: #ece9f1;
+  background: #17161c;
+}
+
+html[data-theme="dark"] .sidebar,
+html[data-theme="dark"] .profile-card,
+html[data-theme="dark"] .profile-hero,
+html[data-theme="dark"] .profile-note-card,
+html[data-theme="dark"] .feed-card,
+html[data-theme="dark"] .note-article,
+html[data-theme="dark"] .preview-body,
+html[data-theme="dark"] .messages-empty,
+html[data-theme="dark"] .auth-card {
+  border-color: #302d3a;
+  background: #211f28;
+  box-shadow: 0 7px 20px #00000038;
+}
+
+html[data-theme="dark"] .sidebar {
+  border-right-color: #302d3a;
+}
+
+html[data-theme="dark"] .sidebar-user {
+  border-color: #302d3a;
+  color: #b6b0c2;
+  background: linear-gradient(135deg, #211f28, #26242e);
+  box-shadow: none;
+}
+
+html[data-theme="dark"] .sidebar-user:hover,
+html[data-theme="dark"] .theme-toggle:hover {
+  background: #2a2733;
+}
+
+html[data-theme="dark"] .nav-item,
+html[data-theme="dark"] .theme-toggle {
+  color: #b6b0c2;
+}
+
+html[data-theme="dark"] .nav-item.active {
+  color: #ff8095;
+  background: #34222a;
+}
+
+html[data-theme="dark"] .search-box,
+html[data-theme="dark"] .category-select,
+html[data-theme="dark"] .sort-select,
+html[data-theme="dark"] .comment-form,
+html[data-theme="dark"] .file-drop {
+  border-color: #302d3a;
+  color: #ece9f1;
+  background: #1b1a21;
+}
+
+html[data-theme="dark"] .search-box input,
+html[data-theme="dark"] .comment-input,
+html[data-theme="dark"] .form-input,
+html[data-theme="dark"] .custom-input .el-input__wrapper,
+html[data-theme="dark"] .custom-textarea .el-textarea__inner {
+  color: #ece9f1;
+  background: #1b1a21;
+}
+
+html[data-theme="dark"] input::placeholder,
+html[data-theme="dark"] textarea::placeholder {
+  color: #6f6a7d;
+}
+
+html[data-theme="dark"] .feed-card h3,
+html[data-theme="dark"] .profile-card h2,
+html[data-theme="dark"] .feed-heading h2,
+html[data-theme="dark"] .profile-notes-heading h1,
+html[data-theme="dark"] .profile-notes-heading h2,
+html[data-theme="dark"] .note-article h1,
+html[data-theme="dark"] .messages-heading h1,
+html[data-theme="dark"] .comment-heading h2 {
+  color: #ece9f1;
+}
+
+html[data-theme="dark"] .feed-card-meta,
+html[data-theme="dark"] .note-author,
+html[data-theme="dark"] .profile-details dt,
+html[data-theme="dark"] .comment-list time,
+html[data-theme="dark"] .comment-list footer,
+html[data-theme="dark"] .preview-label,
+html[data-theme="dark"] .form-count {
+  color: #837d90;
+}
+
+html[data-theme="dark"] .note-tag,
+html[data-theme="dark"] .detail-tags span,
+html[data-theme="dark"] .interest-tags span {
+  color: #c99aa2;
+  background: #2e2530;
+}
+
+html[data-theme="dark"] .detail-carousel,
+html[data-theme="dark"] .feed-card-cover {
+  background: #12111a;
+}
+
+html[data-theme="dark"] .custom-select .el-select__wrapper,
+html[data-theme="dark"] .el-upload--picture-card {
+  background: #1b1a21;
+  border-color: #453f52;
+  color: #ece9f1;
+}
+
+html[data-theme="dark"] .note-actions button,
+html[data-theme="dark"] .note-actions .comment-count {
+  border-color: #302d3a;
+  color: #b6b0c2;
+  background: #211f28;
+}
+
+html[data-theme="dark"] .note-actions button:hover,
+html[data-theme="dark"] .like-action.is-liked {
+  border-color: #5a3742;
+  color: #ff8095;
+  background: #34222a;
+}
+
+html[data-theme="dark"] .comment-section,
+html[data-theme="dark"] .comment-item {
+  border-color: #302d3a;
+}
+
+html[data-theme="dark"] .comment-heart,
+html[data-theme="dark"] .comment-delete,
+html[data-theme="dark"] .note-like {
+  color: #ff8095;
+}

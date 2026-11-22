@@ -1,0 +1,63 @@
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  color-scheme: light;
+
+  /* ── 一、页面与容器底色 ── */
+  --bg-page: #f8f8f8; /* 整个页面的底色 */
+  --bg-surface: #fff; /* 卡片 / 侧边栏 / 顶栏这类「浮起来」的面 */
+  --bg-soft: #faf9f9; /* 面内的浅色分区（输入框、提示块） */
+  --bg-hover: #fff6f7; /* 悬停时的浅色底 */
+  --accent-soft: #fff1f3; /* 主色的浅底（当前页高亮、已赞） */
+  --highlight-soft: #fff4f5; /* 标签底色（比主色浅底更沉） */
+  --danger-soft: #fdecee; /* 错误提示的浅底 */
+  --carousel-bg: #1f1e24; /* 详情页大图的底 */
+
+  /* ── 二、文字 ── */
+  --text-main: #242020; /* 标题与正文主色 */
+  --text-soft: #555; /* 次要文字（表单标签、说明） */
+  --text-prose: #5a5050; /* 长段落正文 */
+  --text-mute: #aaa0a0; /* 卡片底部信息、时间、统计 */
+  --accent-text: #f73655; /* 主色的文字用法 */
+  --highlight: #b17f86; /* 标签文字 */
+  --danger: #c0272d; /* 错误、删除 */
+
+  /* ── 三、边框 ── */
+  --border: #e6cfd3; /* 滚动条等深色描边 */
+  --border-strong: #ffdfe4; /* 主色系边框（较沉） */
+  --accent-border: #ffcbd2; /* 主色系边框（悬停） */
+  --accent-border-2: #ff526b; /* 输入框聚焦边框 */
+
+  /* ── 四、主色 ── */
+  --accent: #ff4662; /* 主色：按钮底、当前页高亮 */
+  --accent-strong: #e8364f; /* 按下时的深一档主色 */
+
+  --el-color-primary: #ff3858;
+  --el-color-primary-light-3: #ff7188;
+  --el-color-primary-light-5: #ff9bab;
+  --el-color-primary-light-7: #ffc4cd;
+  --el-color-primary-light-8: #ffd7dd;
+  --el-color-primary-light-9: #ffebee;
+  --el-color-primary-dark-2: #cc2d46;
+}
+
+body {
+  font-family: "Microsoft YaHei", "PingFang SC", system-ui, -apple-system, sans-serif;
+  color: var(--text-main);
+  background: var(--bg-page);
+  /* 页面最小宽度：窗口再窄也不会把布局挤变形，横向出滚动条 */
+  min-width: 1200px;
+  margin: 0;
+}
+
+/* 内容比视窗高时向下滚动（卡片多了也照常看）。
+   注意别给 html/body 写 overflow: hidden，那会把超出的内容裁掉。 */
+html {
+  overflow-y: auto;
+}
+
+a {
+  text-decoration: none;
+}

@@ -1,0 +1,12 @@
+*.exe
+/log/
+tmp
+static
+/image
+/update
+.env
+!.env.example
+.idea
+log.json
+bin
+/.vscode

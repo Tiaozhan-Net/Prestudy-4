@@ -1,0 +1,3681 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Tenzors Blog API",
+    "description": "Tenzors 博客后端接口文档。根据前端项目 `fe-vue-demo` 的页面、数据操作与类型定义反推生成，可直接导入 Apifox。\n\n## 认证方式：Cookie + Session\n- 登录成功后服务端通过 `Set-Cookie` 下发会话 ID（`sid`，`HttpOnly`）\n- 浏览器后续请求自动携带 Cookie，无需在参数中手动传递\n- 前端使用 `fetch` 时需开启 `credentials: 'include'`；跨域时服务端需允许凭证并配置 `Access-Control-Allow-Credentials: true`\n- 登出或修改密码后由服务端清除 Cookie（`Set-Cookie: sid=; Max-Age=0`）\n\n## 通用响应结构\n除图片等二进制资源外，所有接口统一返回 `{ code, message, data }`：\n- `code = 0` 表示成功，非 0 表示业务错误\n- 未登录 / 登录过期统一返回 HTTP `401` + `code = 2003`\n- `data` 在失败时通常为 `null`\n\n## 业务状态码\n| code | 含义 |\n| --- | --- |\n| 0 | 成功 |\n| 1001 | 用户名已存在 |\n| 1002 | 参数不合法 |\n| 2001 | 用户名或密码错误 |\n| 2002 | 尝试次数过多，请稍后再试 |\n| 2003 | 未登录或登录已过期 |\n| 3001 | 文章不存在 |\n| 3002 | 无权限删除该文章 |\n| 4001 | 无权限删除该评论 |\n| 4002 | 评论不存在 |\n| 5001 | 用户不存在 |\n| 6001 | 不能关注自己 |\n| 7001 | 会话不存在 |\n| 7002 | 无权访问该会话 |\n| 7003 | 不能和自己聊天 |\n| 9001 | 服务器内部错误 |\n\n## 与前端代码的对应关系\n- 注册 / 登录 / 登出 / 恢复登录态：`src/composables/auth.ts`\n- 文章列表、搜索、分类、作者拼接：`src/views/HomePage.vue` + `src/composables/api/posts.ts`\n- 发布 / 删除文章：`src/views/EditingPage.vue` + `src/composables/data/articles.ts`\n- 点赞文章、关注作者：`src/views/DetailsPage.vue`\n- 评论增删、点赞评论：`src/views/DetailsPage.vue` + `src/components/SingleComment.vue` + `src/composables/data/comments.ts`\n- 个人资料、修改密码、我的笔记：`src/views/ProfilePage.vue`\n- 私信 / 消息：`src/views/MessagePage.vue`（当前为静态空状态，接口按 HTTP 轮询设计）\n\n## 私信与 HTTP 轮询\n不使用 WebSocket，前端通过定时请求获取新消息：\n- 会话列表：每 10 秒请求 `GET /conversations`\n- 当前打开的会话：每 3~5 秒请求 `GET /conversations/{id}/messages?afterId=<最后一条消息ID>`\n- 两人之间只保留一个会话，重复创建返回已有会话；消息为纯文本\n- 不设计红点 / 未读提醒，也不维护已读状态\n\n## 前端字段约定\n- 文章封面取 `images[0]`，服务端可同步返回只读字段 `cover`\n- 前端会把图片压缩为 `data:image/jpeg;base64,...` 后随 JSON 提交，因此图片字段可能较长\n- 标签、兴趣由前端按空格拆分后以数组提交\n- 用户资料字段映射：前端 `User.description`（简介）→ 接口 `slogan`；前端 `User.about`（关于我）→ 接口 `description`\n",
+    "version": "2.0.0",
+    "license": {
+      "name": "仅供学习使用"
+    }
+  },
+  "tags": [
+    {
+      "name": "认证"
+    },
+    {
+      "name": "文章"
+    },
+    {
+      "name": "评论"
+    },
+    {
+      "name": "用户"
+    },
+    {
+      "name": "消息"
+    },
+    {
+      "name": "上传"
+    }
+  ],
+  "paths": {
+    "/auth/register": {
+      "post": {
+        "summary": "用户注册",
+        "deprecated": false,
+        "description": "\n",
+        "operationId": "registerUser",
+        "tags": [
+          "认证"
+        ],
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "password"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 20,
+                    "example": "小明"
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 20,
+                    "example": "abc123456"
+                  }
+                }
+              },
+              "example": {
+                "name": "小明",
+                "password": "abc123456"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "ok"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "message": "ok"
+                }
+              }
+            },
+            "headers": {}
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "ok"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "code": 1002,
+                  "message": "参数不合法"
+                }
+              }
+            },
+            "headers": {}
+          },
+          "409": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "ok"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "code": 1001,
+                  "message": "用户名已存在"
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "用户登录",
+        "deprecated": false,
+        "description": "\n",
+        "operationId": "loginUser",
+        "tags": [
+          "认证"
+        ],
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "password"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "example": "小明"
+                  },
+                  "password": {
+                    "type": "string",
+                    "example": "abc123456"
+                  }
+                }
+              },
+              "example": {
+                "name": "小明",
+                "password": "abc123456"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "ok"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "message": "ok"
+                }
+              }
+            },
+            "headers": {
+              "Set-Cookie": {
+                "required": false,
+                "description": "",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "ok"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "code": 2001,
+                  "message": "用户名或密码错误"
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/auth/profile": {
+      "get": {
+        "summary": "获取登录用户信息",
+        "deprecated": false,
+        "description": "",
+        "tags": [
+          "认证"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResult"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/UserProfile"
+                        }
+                      },
+                      "required": [
+                        "data"
+                      ]
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "message": "ok",
+                  "data": {
+                    "name": "小红",
+                    "avatar": "/avatar.png",
+                    "slogan": "你好"
+                  }
+                }
+              }
+            },
+            "headers": {}
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "ok"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "code": 2003,
+                  "message": "未登录或登录已过期"
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/auth/logout": {
+      "delete": {
+        "summary": "退出登录",
+        "deprecated": false,
+        "description": "\n",
+        "operationId": "logoutUser",
+        "tags": [
+          "认证"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "ok"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "message": "ok"
+                }
+              }
+            },
+            "headers": {
+              "Set-Cookie": {
+                "required": false,
+                "description": "",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/articles/list": {
+      "get": {
+        "summary": "获取笔记列表",
+        "deprecated": false,
+        "description": "\n",
+        "operationId": "listArticles",
+        "tags": [
+          "文章"
+        ],
+        "parameters": [
+          {
+            "name": "category",
+            "in": "query",
+            "description": "",
+            "required": false,
+            "example": "",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "音乐",
+                "美食",
+                "萌宠",
+                "旅行",
+                "游戏",
+                "影视",
+                "读书",
+                "摄影",
+                "编程",
+                "其他"
+              ],
+              "default": "all",
+              "example": "旅行"
+            }
+          },
+          {
+            "name": "keyword",
+            "in": "query",
+            "description": "",
+            "required": false,
+            "example": "",
+            "schema": {
+              "type": "string",
+              "example": "美食"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "",
+            "required": false,
+            "example": "",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "date-desc",
+                "date-asc",
+                "likes-desc"
+              ],
+              "default": "date-desc"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "",
+            "required": false,
+            "example": "",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "example": 1
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "description": "",
+            "required": false,
+            "example": "",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "example": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "文章列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResult"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "required": [
+                            "list",
+                            "total"
+                          ],
+                          "properties": {
+                            "list": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {}
+                              }
+                            },
+                            "total": {
+                              "type": "integer",
+                              "example": 2
+                            },
+                            "page": {
+                              "type": "integer",
+                              "example": 1
+                            },
+                            "size": {
+                              "type": "integer",
+                              "example": 10
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "message": "ok",
+                  "data": {
+                    "total": 2,
+                    "page": 1,
+                    "size": 10,
+                    "list": [
+                      {
+                        "id": 12,
+                        "authorId": 3,
+                        "author": "小红",
+                        "avatar": "/avatar.png",
+                        "cover": "/covers/12.jpg",
+                        "title": "第一次去成都",
+                        "images": [
+                          "/covers/12.jpg"
+                        ],
+                        "content": "成都太好吃啦...",
+                        "tags": [
+                          "旅行",
+                          "美食"
+                        ],
+                        "category": "旅行",
+                        "likes": 34,
+                        "createTime": "2026-11-01T08:30:00.000Z"
+                      },
+                      {
+                        "id": 15,
+                        "authorId": 3,
+                        "author": "小红",
+                        "avatar": "/avatar.png",
+                        "cover": "/covers/15.jpg",
+                        "title": "周末的咖啡店",
+                        "images": [
+                          "/covers/15.jpg"
+                        ],
+                        "content": "安静的午后...",
+                        "tags": [
+                          "美食",
+                          "摄影"
+                        ],
+                        "category": "美食",
+                        "likes": 21,
+                        "createTime": "2026-10-28T09:00:00.000Z"
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/articles": {
+      "post": {
+        "summary": "发布笔记",
+        "deprecated": false,
+        "description": "\n",
+        "operationId": "createArticle",
+        "tags": [
+          "文章"
+        ],
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "title",
+                  "content",
+                  "category"
+                ],
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40,
+                    "example": "第一次去成都"
+                  },
+                  "content": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500,
+                    "example": "成都太好吃啦，推荐这家火锅！"
+                  },
+                  "images": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "example": [
+                      "/covers/12.jpg"
+                    ]
+                  },
+                  "tags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 40
+                    },
+                    "example": [
+                      "旅行",
+                      "美食"
+                    ]
+                  },
+                  "category": {
+                    "$ref": "#/components/schemas/Category"
+                  }
+                }
+              },
+              "example": {
+                "title": "第一次去成都",
+                "content": "成都太好吃啦，推荐这家火锅！",
+                "images": [
+                  "/covers/12.jpg"
+                ],
+                "tags": [
+                  "旅行",
+                  "美食"
+                ],
+                "category": "旅行"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResult"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/Post"
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "message": "ok",
+                  "data": {
+                    "id": 99,
+                    "authorId": 1,
+                    "author": "小明",
+                    "avatar": "/avatar.png",
+                    "cover": "/covers/12.jpg",
+                    "title": "第一次去成都",
+                    "images": [
+                      "/covers/12.jpg"
+                    ],
+                    "content": "成都太好吃啦",
+                    "tags": [
+                      "旅行"
+                    ],
+                    "category": "旅行",
+                    "likes": 0,
+                    "createTime": "2026-11-09T12:00:00.000Z"
+                  }
+                }
+              }
+            },
+            "headers": {}
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResult"
+                },
+                "example": {
+                  "code": 1002,
+                  "message": "标题、分类和正文不能为空",
+                  "data": null
+                }
+              }
+            },
+            "headers": {}
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResult"
+                },
+                "example": {
+                  "code": 2003,
+                  "message": "未登录或登录已过期",
+                  "data": null
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/articles/{id}": {
+      "get": {
+        "summary": "获取笔记详情",
+        "deprecated": false,
+        "description": "",
+        "operationId": "getArticle",
+        "tags": [
+          "文章"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "example": 12,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResult"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/Post"
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "message": "ok",
+                  "data": {
+                    "id": 12,
+                    "authorId": 3,
+                    "author": "小红",
+                    "avatar": "/avatar.png",
+                    "cover": "/covers/12.jpg",
+                    "title": "第一次去成都",
+                    "images": [
+                      "/covers/12.jpg",
+                      "/covers/12-2.jpg"
+                    ],
+                    "content": "成都太好吃啦...",
+                    "tags": [
+                      "旅行",
+                      "美食"
+                    ],
+                    "category": "旅行",
+                    "likes": 34,
+                    "createTime": "2026-11-01T08:30:00.000Z"
+                  }
+                }
+              }
+            },
+            "headers": {}
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResult"
+                },
+                "example": {
+                  "code": 3001,
+                  "message": "文章不存在",
+                  "data": null
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "summary": "删除笔记",
+        "deprecated": false,
+        "description": "\n",
+        "operationId": "deleteArticle",
+        "tags": [
+          "文章"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "example": 12,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResult"
+                },
+                "example": {
+                  "code": 0,
+                  "message": "ok",
+                  "data": null
+                }
+              }
+            },
+            "headers": {}
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResult"
+                },
+                "example": {
+                  "code": 2003,
+                  "message": "未登录或登录已过期",
+                  "data": null
+                }
+              }
+            },
+            "headers": {}
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResult"
+                },
+                "example": {
+                  "code": 3002,
+                  "message": "无权限删除该文章",
+                  "data": null
+                }
+              }
+            },
+            "headers": {}
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResult"
+                },
+                "example": {
+                  "code": 3001,
+                  "message": "文章不存在",
+                  "data": null
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/articles/{id}/like": {
+      "post": {
+        "summary": "点赞笔记",
+        "deprecated": false,
+        "description": "",
+        "operationId": "likeArticle",
+        "tags": [
+          "文章"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "example": 12,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResult"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "required": [
+                            "liked",
+                            "likes"
+                          ],
+                          "properties": {
+                            "liked": {
+                              "type": "boolean",
+                              "description": "固定为 true",
+                              "example": true
+                            },
+                            "likes": {
+                              "type": "integer",
+                              "description": "文章最新点赞数",
+                              "example": 35
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "message": "ok",
+                  "data": {
+                    "liked": true,
+                    "likes": 35
+                  }
+                }
+              }
+            },
+            "headers": {}
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResult"
+                },
+                "example": {
+                  "code": 2003,
+                  "message": "未登录或登录已过期",
+                  "data": null
+                }
+              }
+            },
+            "headers": {}
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResult"
+                },
+                "example": {
+                  "code": 3001,
+                  "message": "文章不存在",
+                  "data": null
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "summary": "取消点赞笔记",
+        "deprecated": false,
+        "description": "\n",
+        "operationId": "unlikeArticle",
+        "tags": [
+          "文章"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "example": 12,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResult"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "required": [
+                            "liked",
+                            "likes"
+                          ],
+                          "properties": {
+                            "liked": {
+                              "type": "boolean",
+                              "description": "固定为 false",
+                              "example": false
+                            },
+                            "likes": {
+                              "type": "integer",
+                              "description": "文章最新点赞数",
+                              "example": 34
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "message": "ok",
+                  "data": {
+                    "liked": false,
+                    "likes": 34
+                  }
+                }
+              }
+            },
+            "headers": {}
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResult"
+                },
+                "example": {
+                  "code": 2003,
+                  "message": "未登录或登录已过期",
+                  "data": null
+                }
+              }
+            },
+            "headers": {}
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResult"
+                },
+                "example": {
+                  "code": 3001,
+                  "message": "文章不存在",
+                  "data": null
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/articles/{id}/comments": {
+      "get": {
+        "summary": "获取笔记评论列表",
+        "deprecated": false,
+        "description": "\n",
+        "operationId": "listArticleComments",
+        "tags": [
+          "评论"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "example": 12,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "",
+            "required": false,
+            "example": "",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "likes-desc",
+                "time-desc"
+              ],
+              "default": "likes-desc"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResult"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/Comment"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "message": "ok",
+                  "data": [
+                    {
+                      "id": 28,
+                      "articleId": 12,
+                      "userId": 3,
+                      "user": {
+                        "id": 3,
+                        "name": "小红",
+                        "avatar": "/avatar.png"
+                      },
+                      "content": "写得好棒！",
+                      "likes": 5,
+                      "createTime": "2026-11-05T09:00:00.000Z"
+                    },
+                    {
+                      "id": 29,
+                      "articleId": 12,
+                      "userId": 1,
+                      "user": {
+                        "id": 1,
+                        "name": "小明",
+                        "avatar": "/avatar.png"
+                      },
+                      "content": "收藏了，下次去成都照着吃",
+                      "likes": 1,
+                      "createTime": "2026-11-06T10:30:00.000Z"
+                    }
+                  ]
+                }
+              }
+            },
+            "headers": {}
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResult"
+                },
+                "example": {
+                  "code": 3001,
+                  "message": "文章不存在",
+                  "data": null
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ]
+      },
+      "post": {
+        "summary": "发表评论",
+        "deprecated": false,
+        "description": "\n",
+        "operationId": "createComment",
+        "tags": [
+          "评论"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "文章 ID",
+            "required": true,
+            "example": 12,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "content"
+                ],
+                "properties": {
+                  "content": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80,
+                    "description": "评论内容（前端输入框限制 80 字）",
+                    "example": "写得好棒！"
+                  }
+                }
+              },
+              "example": {
+                "content": "写得好棒！"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResult"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/Comment"
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "message": "ok",
+                  "data": {
+                    "id": 999,
+                    "articleId": 12,
+                    "userId": 1,
+                    "user": {
+                      "id": 1,
+                      "name": "小明",
+                      "avatar": "/avatar.png"
+                    },
+                    "content": "写得好棒！",
+                    "likes": 0,
+                    "createTime": "2026-11-09T12:00:00.000Z"
+                  }
+                }
+              }
+            },
+            "headers": {}
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResult"
+                },
+                "example": {
+                  "code": 1002,
+                  "message": "评论内容不能为空",
+                  "data": null
+                }
+              }
+            },
+            "headers": {}
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResult"
+                },
+                "example": {
+                  "code": 2003,
+                  "message": "未登录或登录已过期",
+                  "data": null
+                }
+              }
+            },
+            "headers": {}
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResult"
+                },
+                "example": {
+                  "code": 3001,
+                  "message": "文章不存在",
+                  "data": null
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/comments/{id}": {
+      "delete": {
+        "summary": "删除评论",
+        "deprecated": false,
+        "description": "\n",
+        "operationId": "deleteComment",
+        "tags": [
+          "评论"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "example": 28,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResult"
+                },
+                "example": {
+                  "code": 0,
+                  "message": "ok",
+                  "data": null
+                }
+              }
+            },
+            "headers": {}
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResult"
+                },
+                "example": {
+                  "code": 2003,
+                  "message": "未登录或登录已过期",
+                  "data": null
+                }
+              }
+            },
+            "headers": {}
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResult"
+                },
+                "example": {
+                  "code": 4001,
+                  "message": "无权限删除该评论",
+                  "data": null
+                }
+              }
+            },
+            "headers": {}
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResult"
+                },
+                "example": {
+                  "code": 4002,
+                  "message": "评论不存在",
+                  "data": null
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/comments/{id}/like": {
+      "post": {
+        "summary": "点赞评论",
+        "deprecated": false,
+        "description": "\n",
+        "operationId": "likeComment",
+        "tags": [
+          "评论"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "example": 28,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResult"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "required": [
+                            "liked",
+                            "likes"
+                          ],
+                          "properties": {
+                            "liked": {
+                              "type": "boolean",
+                              "description": "固定为 true",
+                              "example": true
+                            },
+                            "likes": {
+                              "type": "integer",
+                              "description": "评论最新点赞数",
+                              "example": 6
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "message": "ok",
+                  "data": {
+                    "liked": true,
+                    "likes": 6
+                  }
+                }
+              }
+            },
+            "headers": {}
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResult"
+                },
+                "example": {
+                  "code": 2003,
+                  "message": "未登录或登录已过期",
+                  "data": null
+                }
+              }
+            },
+            "headers": {}
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResult"
+                },
+                "example": {
+                  "code": 4002,
+                  "message": "评论不存在",
+                  "data": null
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "summary": "取消点赞评论",
+        "deprecated": false,
+        "description": "",
+        "operationId": "unlikeComment",
+        "tags": [
+          "评论"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "example": 28,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResult"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "required": [
+                            "liked",
+                            "likes"
+                          ],
+                          "properties": {
+                            "liked": {
+                              "type": "boolean",
+                              "description": "固定为 false",
+                              "example": false
+                            },
+                            "likes": {
+                              "type": "integer",
+                              "description": "评论最新点赞数",
+                              "example": 5
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "message": "ok",
+                  "data": {
+                    "liked": false,
+                    "likes": 5
+                  }
+                }
+              }
+            },
+            "headers": {}
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResult"
+                },
+                "example": {
+                  "code": 2003,
+                  "message": "未登录或登录已过期",
+                  "data": null
+                }
+              }
+            },
+            "headers": {}
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResult"
+                },
+                "example": {
+                  "code": 4002,
+                  "message": "评论不存在",
+                  "data": null
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/users/me": {
+      "get": {
+        "summary": "查看个人信息",
+        "deprecated": false,
+        "description": "",
+        "operationId": "getCurrentUser",
+        "tags": [
+          "用户",
+          "认证"
+        ],
+        "parameters": [
+          {
+            "name": "Cookie",
+            "in": "header",
+            "description": "",
+            "required": false,
+            "example": "",
+            "schema": {
+              "type": "string",
+              "example": "sid=abc123def456"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResult"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/User"
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "message": "ok",
+                  "data": {
+                    "id": 1,
+                    "name": "小明",
+                    "avatar": "/avatar.png",
+                    "createTime": "2026-11-09T12:00:00.000Z",
+                    "slogan": "这个人很懒",
+                    "description": "大家好，我是小明",
+                    "location": "北京",
+                    "interests": [
+                      "摄影",
+                      "编程"
+                    ],
+                    "following": [
+                      3,
+                      7
+                    ],
+                    "likeArticles": [
+                      12,
+                      15
+                    ],
+                    "likeComments": [
+                      28
+                    ]
+                  }
+                }
+              }
+            },
+            "headers": {}
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResult"
+                },
+                "example": {
+                  "code": 2003,
+                  "message": "未登录或登录已过期",
+                  "data": null
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ]
+      },
+      "put": {
+        "summary": "修改个人资料",
+        "deprecated": false,
+        "description": "\n",
+        "operationId": "updateMyProfile",
+        "tags": [
+          "用户"
+        ],
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 20,
+                    "example": "小明"
+                  },
+                  "avatar": {
+                    "type": "string",
+                    "example": "/avatar.png"
+                  },
+                  "slogan": {
+                    "type": "string",
+                    "maxLength": 32,
+                    "example": "这个人很懒"
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 120,
+                    "example": "大家好，我是小明，喜欢摄影和编程"
+                  },
+                  "location": {
+                    "type": "string",
+                    "maxLength": 40,
+                    "example": "北京"
+                  },
+                  "interests": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "example": [
+                      "摄影",
+                      "编程"
+                    ]
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 20,
+                    "example": "newpass123"
+                  }
+                }
+              },
+              "example": {
+                "name": "小明",
+                "avatar": "/avatar.png",
+                "slogan": "这个人很懒",
+                "description": "大家好，我是小明，喜欢摄影和编程",
+                "location": "北京",
+                "interests": [
+                  "摄影",
+                  "编程"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResult"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/User"
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "message": "ok",
+                  "data": {
+                    "id": 1,
+                    "name": "小明",
+                    "avatar": "/avatar.png",
+                    "createTime": "2026-11-09T12:00:00.000Z",
+                    "slogan": "这个人很懒",
+                    "description": "大家好，我是小明，喜欢摄影和编程",
+                    "location": "北京",
+                    "interests": [
+                      "摄影",
+                      "编程"
+                    ],
+                    "following": [
+                      3,
+                      7
+                    ],
+                    "likeArticles": [
+                      12,
+                      15
+                    ],
+                    "likeComments": [
+                      28
+                    ]
+                  }
+                }
+              }
+            },
+            "headers": {
+              "Set-Cookie": {
+                "required": false,
+                "description": "仅当修改密码时返回：`sid=; HttpOnly; Path=/; Max-Age=0`（清除登录态）",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResult"
+                },
+                "example": {
+                  "code": 1002,
+                  "message": "参数不合法",
+                  "data": null
+                }
+              }
+            },
+            "headers": {}
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResult"
+                },
+                "example": {
+                  "code": 2003,
+                  "message": "未登录或登录已过期",
+                  "data": null
+                }
+              }
+            },
+            "headers": {}
+          },
+          "409": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResult"
+                },
+                "example": {
+                  "code": 1001,
+                  "message": "用户名已存在",
+                  "data": null
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/users/{id}": {
+      "get": {
+        "summary": "获取他人资料",
+        "deprecated": false,
+        "description": "\n",
+        "operationId": "getUserPublicProfile",
+        "tags": [
+          "用户"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "example": 3,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResult"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/UserPublic"
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "message": "ok",
+                  "data": {
+                    "id": 3,
+                    "name": "小红",
+                    "avatar": "/avatar.png",
+                    "createTime": "2026-01-01T00:00:00.000Z",
+                    "slogan": "爱旅行的吃货",
+                    "description": "去过很多地方，最爱成都",
+                    "location": "成都",
+                    "interests": [
+                      "旅行",
+                      "美食"
+                    ],
+                    "isFollowing": false
+                  }
+                }
+              }
+            },
+            "headers": {}
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResult"
+                },
+                "example": {
+                  "code": 5001,
+                  "message": "用户不存在",
+                  "data": null
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/users/{id}/follow": {
+      "post": {
+        "summary": "关注用户",
+        "deprecated": false,
+        "description": "\n",
+        "operationId": "followUser",
+        "tags": [
+          "用户"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "example": 3,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResult"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "required": [
+                            "following"
+                          ],
+                          "properties": {
+                            "following": {
+                              "type": "boolean",
+                              "description": "当前用户是否已关注目标用户",
+                              "example": true
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "message": "ok",
+                  "data": {
+                    "following": true
+                  }
+                }
+              }
+            },
+            "headers": {}
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResult"
+                },
+                "example": {
+                  "code": 6001,
+                  "message": "不能关注自己",
+                  "data": null
+                }
+              }
+            },
+            "headers": {}
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResult"
+                },
+                "example": {
+                  "code": 2003,
+                  "message": "未登录或登录已过期",
+                  "data": null
+                }
+              }
+            },
+            "headers": {}
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResult"
+                },
+                "example": {
+                  "code": 5001,
+                  "message": "用户不存在",
+                  "data": null
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "summary": "取消关注用户",
+        "deprecated": false,
+        "description": "",
+        "operationId": "unfollowUser",
+        "tags": [
+          "用户"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "example": 3,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResult"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "required": [
+                            "following"
+                          ],
+                          "properties": {
+                            "following": {
+                              "type": "boolean",
+                              "description": "当前用户是否已关注目标用户",
+                              "example": false
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "message": "ok",
+                  "data": {
+                    "following": false
+                  }
+                }
+              }
+            },
+            "headers": {}
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResult"
+                },
+                "example": {
+                  "code": 2003,
+                  "message": "未登录或登录已过期",
+                  "data": null
+                }
+              }
+            },
+            "headers": {}
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResult"
+                },
+                "example": {
+                  "code": 5001,
+                  "message": "用户不存在",
+                  "data": null
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/users/{id}/articles": {
+      "get": {
+        "summary": "获取用户文章列表",
+        "deprecated": false,
+        "description": "",
+        "operationId": "listUserPosts",
+        "tags": [
+          "用户"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "example": 3,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "",
+            "required": false,
+            "example": "",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "date-desc",
+                "date-asc",
+                "likes-desc"
+              ],
+              "default": "date-desc"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResult"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/Post"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "message": "ok",
+                  "data": [
+                    {
+                      "id": 12,
+                      "authorId": 3,
+                      "author": "小红",
+                      "avatar": "/avatar.png",
+                      "cover": "/covers/12.jpg",
+                      "title": "第一次去成都",
+                      "images": [
+                        "/covers/12.jpg"
+                      ],
+                      "content": "成都太好吃啦...",
+                      "tags": [
+                        "旅行",
+                        "美食"
+                      ],
+                      "category": "旅行",
+                      "likes": 34,
+                      "createTime": "2026-11-01T08:30:00.000Z"
+                    }
+                  ]
+                }
+              }
+            },
+            "headers": {}
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResult"
+                },
+                "example": {
+                  "code": 5001,
+                  "message": "用户不存在",
+                  "data": null
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/conversations": {
+      "get": {
+        "summary": "获取会话列表",
+        "deprecated": false,
+        "description": "\n",
+        "operationId": "listConversations",
+        "tags": [
+          "消息"
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "",
+            "required": false,
+            "example": "",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "example": 1
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "description": "",
+            "required": false,
+            "example": "",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "example": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResult"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "required": [
+                            "list",
+                            "total"
+                          ],
+                          "properties": {
+                            "list": {
+                              "type": "array",
+                              "items": {
+                                "$ref": "#/components/schemas/Conversation"
+                              }
+                            },
+                            "total": {
+                              "type": "integer",
+                              "description": "对话信息总数",
+                              "example": 2
+                            },
+                            "page": {
+                              "type": "integer",
+                              "description": "当前页码；未分页时不返回",
+                              "example": 1
+                            },
+                            "size": {
+                              "type": "integer",
+                              "description": "每页条数；未分页时不返回",
+                              "example": 20
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "message": "ok",
+                  "data": {
+                    "total": 2,
+                    "page": 1,
+                    "size": 20,
+                    "list": [
+                      {
+                        "id": 7,
+                        "peer": {
+                          "id": 3,
+                          "name": "小红",
+                          "avatar": "/avatar.png"
+                        },
+                        "lastMessage": {
+                          "id": 101,
+                          "conversationId": 7,
+                          "senderId": 3,
+                          "receiverId": 1,
+                          "content": "在吗？想请教你成都的攻略",
+                          "createTime": "2026-11-09T12:10:00.000Z"
+                        },
+                        "createTime": "2026-11-08T20:00:00.000Z",
+                        "updateTime": "2026-11-09T12:10:00.000Z"
+                      },
+                      {
+                        "id": 9,
+                        "peer": {
+                          "id": 7,
+                          "name": "小刚",
+                          "avatar": "/avatar.png"
+                        },
+                        "lastMessage": {
+                          "id": 98,
+                          "conversationId": 9,
+                          "senderId": 1,
+                          "receiverId": 7,
+                          "content": "好的，明天见",
+                          "createTime": "2026-11-09T09:30:00.000Z"
+                        },
+                        "createTime": "2026-11-07T18:00:00.000Z",
+                        "updateTime": "2026-11-09T09:30:00.000Z"
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "headers": {}
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResult"
+                },
+                "example": {
+                  "code": 2003,
+                  "message": "未登录或登录已过期",
+                  "data": null
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ]
+      },
+      "post": {
+        "summary": "创建或获取与他人会话",
+        "deprecated": false,
+        "description": "",
+        "operationId": "createConversation",
+        "tags": [
+          "消息"
+        ],
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "userId"
+                ],
+                "properties": {
+                  "userId": {
+                    "type": "integer",
+                    "example": 3
+                  }
+                }
+              },
+              "example": {
+                "userId": 3
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResult"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/Conversation"
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "message": "ok",
+                  "data": {
+                    "id": 7,
+                    "peer": {
+                      "id": 3,
+                      "name": "小红",
+                      "avatar": "/avatar.png"
+                    },
+                    "createTime": "2026-11-09T12:00:00.000Z",
+                    "updateTime": "2026-11-09T12:00:00.000Z"
+                  }
+                }
+              }
+            },
+            "headers": {}
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResult"
+                },
+                "example": {
+                  "code": 7003,
+                  "message": "不能和自己聊天",
+                  "data": null
+                }
+              }
+            },
+            "headers": {}
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResult"
+                },
+                "example": {
+                  "code": 2003,
+                  "message": "未登录或登录已过期",
+                  "data": null
+                }
+              }
+            },
+            "headers": {}
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResult"
+                },
+                "example": {
+                  "code": 5001,
+                  "message": "用户不存在",
+                  "data": null
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/conversations/{id}/messages": {
+      "get": {
+        "summary": "获取会话消息",
+        "deprecated": false,
+        "description": "\n",
+        "operationId": "listMessages",
+        "tags": [
+          "消息"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "example": 7,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "afterId",
+            "in": "query",
+            "description": "",
+            "required": false,
+            "example": "",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "example": 101
+            }
+          },
+          {
+            "name": "beforeId",
+            "in": "query",
+            "description": "",
+            "required": false,
+            "example": "",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "example": 50
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "",
+            "required": false,
+            "example": "",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResult"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "required": [
+                            "list",
+                            "hasMore",
+                            "peer"
+                          ],
+                          "properties": {
+                            "list": {
+                              "type": "array",
+                              "items": {
+                                "$ref": "#/components/schemas/Message"
+                              }
+                            },
+                            "hasMore": {
+                              "type": "boolean",
+                              "description": "是否还有更早的历史消息",
+                              "example": true
+                            },
+                            "peer": {
+                              "$ref": "#/components/schemas/UserBrief"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            "headers": {}
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResult"
+                },
+                "example": {
+                  "code": 2003,
+                  "message": "未登录或登录已过期",
+                  "data": null
+                }
+              }
+            },
+            "headers": {}
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResult"
+                },
+                "example": {
+                  "code": 7002,
+                  "message": "无权访问该会话",
+                  "data": null
+                }
+              }
+            },
+            "headers": {}
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResult"
+                },
+                "example": {
+                  "code": 7001,
+                  "message": "会话不存在",
+                  "data": null
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ]
+      },
+      "post": {
+        "summary": "发送消息",
+        "deprecated": false,
+        "description": "\n",
+        "operationId": "sendMessage",
+        "tags": [
+          "消息"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "example": 7,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "content"
+                ],
+                "properties": {
+                  "content": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1000,
+                    "example": "在的，我把攻略发你"
+                  }
+                }
+              },
+              "example": {
+                "content": "在的，我把攻略发你"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResult"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/Message"
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "message": "ok",
+                  "data": {
+                    "id": 102,
+                    "conversationId": 7,
+                    "senderId": 1,
+                    "receiverId": 3,
+                    "content": "在的，我把攻略发你",
+                    "createTime": "2026-11-09T12:12:00.000Z"
+                  }
+                }
+              }
+            },
+            "headers": {}
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResult"
+                },
+                "example": {
+                  "code": 1002,
+                  "message": "消息内容不能为空",
+                  "data": null
+                }
+              }
+            },
+            "headers": {}
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResult"
+                },
+                "example": {
+                  "code": 2003,
+                  "message": "未登录或登录已过期",
+                  "data": null
+                }
+              }
+            },
+            "headers": {}
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResult"
+                },
+                "example": {
+                  "code": 7002,
+                  "message": "无权访问该会话",
+                  "data": null
+                }
+              }
+            },
+            "headers": {}
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResult"
+                },
+                "example": {
+                  "code": 7001,
+                  "message": "会话不存在",
+                  "data": null
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/image": {
+      "post": {
+        "summary": "图片上传",
+        "deprecated": false,
+        "description": "",
+        "tags": [
+          "上传"
+        ],
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "image": {
+                    "format": "binary",
+                    "type": "string",
+                    "example": ""
+                  }
+                }
+              },
+              "example": {
+                "image": ""
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResult"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "url": {
+                              "type": "string",
+                              "description": "图片存储的相对路径"
+                            }
+                          },
+                          "required": [
+                            "url"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "data"
+                      ]
+                    }
+                  ]
+                }
+              }
+            },
+            "headers": {}
+          },
+          "408": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResult"
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "UserProfile": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "avatar",
+          "slogan"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 3
+          },
+          "name": {
+            "type": "string",
+            "example": "小红"
+          },
+          "avatar": {
+            "type": "string"
+          },
+          "slogan": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiResult": {
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "properties": {
+          "code": {
+            "type": "integer",
+            "example": 0
+          },
+          "message": {
+            "type": "string",
+            "example": "ok"
+          },
+          "data": {}
+        }
+      },
+      "Category": {
+        "type": "string",
+        "enum": [
+          "音乐",
+          "美食",
+          "萌宠",
+          "旅行",
+          "游戏",
+          "影视",
+          "读书",
+          "摄影",
+          "编程",
+          "其他"
+        ],
+        "example": "旅行"
+      },
+      "User": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "avatar",
+          "createTime"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "name": {
+            "type": "string",
+            "example": "小明"
+          },
+          "avatar": {
+            "type": "string",
+            "example": "/avatar.png"
+          },
+          "createTime": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-09T12:00:00.000Z"
+          },
+          "slogan": {
+            "type": "string",
+            "maxLength": 32,
+            "example": "这个人很懒"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 120,
+            "example": "大家好，我是小明"
+          },
+          "location": {
+            "type": "string",
+            "maxLength": 40,
+            "example": "北京"
+          },
+          "interests": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "摄影",
+              "编程"
+            ]
+          },
+          "following": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "example": [
+              3,
+              7
+            ]
+          },
+          "likeArticles": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "example": [
+              12,
+              15
+            ]
+          },
+          "likeComments": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "example": [
+              28
+            ]
+          }
+        }
+      },
+      "UserPublic": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "avatar",
+          "createTime"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 3
+          },
+          "name": {
+            "type": "string",
+            "example": "小红"
+          },
+          "avatar": {
+            "type": "string",
+            "example": "/avatar.png"
+          },
+          "createTime": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-01-01T00:00:00.000Z"
+          },
+          "slogan": {
+            "type": "string",
+            "maxLength": 32,
+            "example": "爱旅行的吃货"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 120,
+            "example": "去过很多地方，最爱成都"
+          },
+          "location": {
+            "type": "string",
+            "example": "成都"
+          },
+          "interests": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "旅行",
+              "美食"
+            ]
+          },
+          "isFollowing": {
+            "type": "boolean",
+            "example": false
+          }
+        }
+      },
+      "Article": {
+        "type": "object",
+        "required": [
+          "id",
+          "authorId",
+          "title",
+          "content",
+          "category",
+          "createTime"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 12
+          },
+          "authorId": {
+            "type": "integer",
+            "example": 3
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 40,
+            "example": "第一次去成都"
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 500,
+            "example": "成都太好吃啦"
+          },
+          "category": {
+            "$ref": "#/components/schemas/Category"
+          },
+          "images": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "/covers/12.jpg"
+            ]
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "旅行",
+              "美食"
+            ]
+          },
+          "likes": {
+            "type": "integer",
+            "example": 34
+          },
+          "comments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Comment"
+            }
+          },
+          "createTime": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-01T08:30:00.000Z"
+          }
+        }
+      },
+      "Post": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Article"
+          },
+          {
+            "type": "object",
+            "required": [
+              "author",
+              "avatar"
+            ],
+            "properties": {
+              "author": {
+                "type": "string",
+                "example": "小红"
+              },
+              "avatar": {
+                "type": "string",
+                "example": "/avatar.png"
+              }
+            }
+          }
+        ]
+      },
+      "Comment": {
+        "type": "object",
+        "required": [
+          "id",
+          "articleId",
+          "userId",
+          "content",
+          "createTime"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 28
+          },
+          "articleId": {
+            "type": "integer",
+            "example": 12
+          },
+          "userId": {
+            "type": "integer",
+            "example": 3
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserBrief"
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 80,
+            "example": "写得好棒！"
+          },
+          "likes": {
+            "type": "integer",
+            "example": 5
+          },
+          "createTime": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-05T09:00:00.000Z"
+          }
+        }
+      },
+      "UserBrief": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "avatar"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 3
+          },
+          "name": {
+            "type": "string",
+            "example": "小红"
+          },
+          "avatar": {
+            "type": "string",
+            "example": "/avatar.png"
+          }
+        }
+      },
+      "Conversation": {
+        "type": "object",
+        "required": [
+          "id",
+          "peer",
+          "createTime",
+          "updateTime"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 7
+          },
+          "peer": {
+            "$ref": "#/components/schemas/UserBrief"
+          },
+          "lastMessage": {
+            "$ref": "#/components/schemas/Message"
+          },
+          "createTime": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-08T20:00:00.000Z"
+          },
+          "updateTime": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-09T12:10:00.000Z"
+          }
+        }
+      },
+      "Message": {
+        "type": "object",
+        "required": [
+          "id",
+          "conversationId",
+          "senderId",
+          "receiverId",
+          "content",
+          "createTime"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 101
+          },
+          "conversationId": {
+            "type": "integer",
+            "example": 7
+          },
+          "senderId": {
+            "type": "integer",
+            "example": 3
+          },
+          "receiverId": {
+            "type": "integer",
+            "example": 1
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 1000,
+            "example": "在吗？想请教你成都的攻略"
+          },
+          "createTime": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-09T12:10:00.000Z"
+          }
+        }
+      }
+    },
+    "responses": {
+      "Unauthorized": {
+        "description": "未登录或登录已过期（Cookie 缺失 / session 销毁 / 超时）",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ApiResult"
+            },
+            "examples": {
+              "成功示例": {
+                "summary": "成功示例",
+                "value": {
+                  "code": 2003,
+                  "message": "未登录或登录已过期",
+                  "data": null
+                }
+              }
+            }
+          }
+        }
+      },
+      "BadRequest": {
+        "description": "参数不合法",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ApiResult"
+            },
+            "examples": {
+              "成功示例": {
+                "summary": "成功示例",
+                "value": {
+                  "code": 1002,
+                  "message": "参数不合法",
+                  "data": null
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "cookieAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "sid",
+        "description": "登录时由 `Set-Cookie` 下发的会话 ID（`HttpOnly`）。\n浏览器会自动携带；在 Apifox 中调试时先请求登录接口，Apifox 会自动记录该 Cookie。\n"
+      }
+    },
+    "parameters": {
+      "SessionCookie": {
+        "name": "Cookie",
+        "in": "header",
+        "required": false,
+        "description": "浏览器自动携带登录时下发的 `sid`，一般无需手动设置",
+        "schema": {
+          "type": "string",
+          "example": "sid=abc123def456"
+        }
+      },
+      "ArticleId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "description": "文章 ID",
+        "schema": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "example": 12
+      },
+      "CommentId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "description": "评论 ID",
+        "schema": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "example": 28
+      },
+      "UserId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "description": "用户 ID",
+        "schema": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "example": 3
+      },
+      "ConversationId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "description": "会话 ID",
+        "schema": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "example": 7
+      }
+    }
+  },
+  "servers": [],
+  "security": [
+    {
+      "cookieAuth": []
+    }
+  ]
+}

@@ -1,0 +1,3 @@
+CREATE DATABASE IF NOT EXISTS be_exam
+  CHARACTER SET utf8mb4
+  COLLATE utf8mb4_unicode_ci;
